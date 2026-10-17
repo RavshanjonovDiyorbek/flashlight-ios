@@ -1,0 +1,45 @@
+name: Build Unsigned IPA
+
+on:
+  push:
+    branches: [ main ]
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: macos-latest
+
+    steps:
+      - name: Kodni yuklab olish
+        uses: actions/checkout@v4
+
+      - name: Xcode loyihasini generatsiya qilish (XcodeGen)
+        run: |
+          if ! command -v xcodegen &> /dev/null; then
+            brew install xcodegen
+          fi
+          xcodegen generate
+
+      - name: Ilovani kompilatsiya qilish (Unsigned)
+        run: |
+          xcodebuild clean build \
+            -project FlashlightApp.xcodeproj \
+            -scheme FlashlightApp \
+            -sdk iphoneos \
+            -configuration Release \
+            -derivedDataPath build \
+            CODE_SIGN_IDENTITY="" \
+            CODE_SIGNING_REQUIRED=NO \
+            CODE_SIGNING_ALLOWED=NO
+
+      - name: IPA faylga qadoqlash
+        run: |
+          mkdir -p Payload
+          cp -r build/Build/Products/Release-iphoneos/FlashlightApp.app Payload/
+          zip -r FlashlightApp.ipa Payload
+
+      - name: Tayyor IPA faylni yuklash
+        uses: actions/upload-artifact@v4
+        with:
+          name: FlashlightApp-IPA
+          path: FlashlightApp.ipa
